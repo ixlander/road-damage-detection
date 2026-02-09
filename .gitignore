@@ -12,6 +12,7 @@ venv/
 # training outputs
 runs/
 wandb/
+outputs/
 *.pt
 
 # notebooks
