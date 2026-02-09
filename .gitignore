@@ -1,0 +1,18 @@
+# data
+data/
+*.zip
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+
+# training outputs
+runs/
+wandb/
+*.pt
+
+# notebooks
+.ipynb_checkpoints/
