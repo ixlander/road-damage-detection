@@ -7,6 +7,7 @@ import tempfile
 
 import streamlit as st
 import numpy as np
+import matplotlib.pyplot as plt
 from PIL import Image
 import cv2
 from ultralytics import YOLO
@@ -29,11 +30,14 @@ def yolo_predict_image(model: YOLO, img_rgb: np.ndarray, conf: float, iou: float
     results = model.predict(source=img_rgb, conf=conf, iou=iou, verbose=False)
     r = results[0]
     dets = []
+    scores = []
+
     if r.boxes is not None and len(r.boxes) > 0:
         for b in r.boxes:
             cls_id = int(b.cls.item())
             score = float(b.conf.item())
             x1, y1, x2, y2 = [float(v) for v in b.xyxy[0].tolist()]
+            scores.append(score)
             dets.append({
                 "class_id": cls_id,
                 "class_name": CLASSES.get(cls_id, str(cls_id)),
@@ -43,7 +47,7 @@ def yolo_predict_image(model: YOLO, img_rgb: np.ndarray, conf: float, iou: float
 
     annotated_bgr = r.plot()
     annotated_rgb = cv2.cvtColor(annotated_bgr, cv2.COLOR_BGR2RGB)
-    return dets, annotated_rgb
+    return dets, annotated_rgb, scores
 
 def run_video_inference(
     model: YOLO,
@@ -89,7 +93,7 @@ def run_video_inference(
             results = model.predict(source=frame_rgb, conf=conf, iou=iou, verbose=False)
             r = results[0]
 
-            annotated_bgr = r.plot()  # already BGR
+            annotated_bgr = r.plot() 
 
             if r.boxes is not None and len(r.boxes) > 0:
                 for b in r.boxes:
@@ -195,7 +199,7 @@ with tab_img:
         img = Image.open(io.BytesIO(up.read())).convert("RGB")
         img_np = np.array(img)
 
-        dets, annotated = yolo_predict_image(model, img_np, conf=conf, iou=iou)
+        dets, annotated, scores = yolo_predict_image(model, img_np, conf=conf, iou=iou)
 
         c1, c2 = st.columns(2)
         with c1:
@@ -204,10 +208,38 @@ with tab_img:
             st.image(annotated, caption="Annotated", use_container_width=True)
 
         st.write(f"Detections: {len(dets)}")
-        if len(dets) == 0:
-            st.info("No detections. Try lowering `conf` (e.g., 0.05) or using the 'More detections' preset.")
-        elif len(dets) > 30:
-            st.info("Many detections. Try increasing `conf` (e.g., 0.25+) or using the 'Fewer false positives' preset.")
+        
+        st.markdown("#### Confidence distribution")
+        if len(scores) == 0:
+            st.caption("No detections → try lowering `conf` (e.g., 0.05 or 0.01 for smoke models).")
+        else:
+            scores_np = np.array(scores, dtype=float)
+            rec = float(np.percentile(scores_np, 30))
+            rec = max(0.01, min(rec, 0.50))
+
+            col_a, col_b = st.columns([2, 1])
+
+            with col_a:
+                fig = plt.figure()
+                plt.hist(scores_np, bins=min(20, max(5, len(scores_np)//2)))
+                plt.axvline(conf, linewidth=2, linestyle="--")
+                plt.title("Detection confidence histogram (dashed line = current conf)")
+                st.pyplot(fig, clear_figure=True)
+
+            with col_b:
+                st.metric("Suggested conf", f"{rec:.2f}")
+                st.caption(
+                    "Rule of thumb:\n"
+                    "- If you see lots of noise, increase `conf`\n"
+                    "- If you miss objects, decrease `conf`\n"
+                )
+                if rec > conf + 0.05:
+                    st.info(f"Try increasing conf to ~{rec:.2f} to reduce noise.")
+                elif rec < conf - 0.05:
+                    st.info(f"Try decreasing conf to ~{rec:.2f} to catch more objects.")
+                else:
+                    st.success("Current conf looks reasonable for this image.")
+
         st.json({"detections": dets})
 
 with tab_vid:
