@@ -117,8 +117,66 @@ st.sidebar.header("Settings")
 default_weights = "runs/detect/smoke_2ep/weights/best.pt"
 weights_path = st.sidebar.text_input("Weights path (.pt)", value=default_weights)
 
-conf = st.sidebar.slider("Confidence threshold", min_value=0.0, max_value=1.0, value=0.10, step=0.01)
-iou = st.sidebar.slider("NMS IoU", min_value=0.0, max_value=1.0, value=0.45, step=0.01)
+st.sidebar.markdown("### Quick presets")
+preset = st.sidebar.selectbox(
+    "Choose a preset",
+    [
+        "Balanced (recommended)",
+        "More detections (higher recall)",
+        "Fewer false positives (higher precision)",
+        "Demo / Smoke model (very low conf)",
+    ],
+    index=0
+)
+
+if preset == "Balanced (recommended)":
+    conf_default, iou_default = 0.15, 0.45
+elif preset == "More detections (higher recall)":
+    conf_default, iou_default = 0.05, 0.45
+elif preset == "Fewer false positives (higher precision)":
+    conf_default, iou_default = 0.35, 0.50
+else:  # Demo / Smoke model
+    conf_default, iou_default = 0.01, 0.45
+
+st.sidebar.markdown("### Confidence threshold (conf)")
+st.sidebar.caption(
+    "Filters out low-confidence detections.\n"
+    "- Lower = more boxes (higher recall, more false positives)\n"
+    "- Higher = fewer boxes (higher precision, may miss objects)\n\n"
+    "**Typical range:** 0.05–0.35"
+)
+conf = st.sidebar.slider(
+    "conf",
+    min_value=0.0,
+    max_value=1.0,
+    value=float(conf_default),
+    step=0.01
+)
+
+st.sidebar.markdown("### NMS IoU (iou)")
+st.sidebar.caption(
+    "Controls how aggressively overlapping boxes are merged by Non-Maximum Suppression (NMS).\n"
+    "- Lower IoU = stricter merging → fewer duplicate boxes\n"
+    "- Higher IoU = keeps more overlapping boxes → can show duplicates\n\n"
+    "**Typical range:** 0.40–0.60"
+)
+iou = st.sidebar.slider(
+    "iou",
+    min_value=0.0,
+    max_value=1.0,
+    value=float(iou_default),
+    step=0.01
+)
+
+if conf < 0.03:
+    st.sidebar.warning("Very low conf: expect many boxes/noise. Useful for smoke models or debugging.")
+elif conf > 0.50:
+    st.sidebar.warning("Very high conf: model may return 0 detections on many images.")
+
+if iou < 0.25:
+    st.sidebar.info("Low IoU: duplicates will be aggressively removed (might suppress nearby objects).")
+elif iou > 0.75:
+    st.sidebar.info("High IoU: NMS will keep many overlapping boxes (more duplicates).")
 
 try:
     model = load_model(weights_path)
@@ -146,6 +204,10 @@ with tab_img:
             st.image(annotated, caption="Annotated", use_container_width=True)
 
         st.write(f"Detections: {len(dets)}")
+        if len(dets) == 0:
+            st.info("No detections. Try lowering `conf` (e.g., 0.05) or using the 'More detections' preset.")
+        elif len(dets) > 30:
+            st.info("Many detections. Try increasing `conf` (e.g., 0.25+) or using the 'Fewer false positives' preset.")
         st.json({"detections": dets})
 
 with tab_vid:
