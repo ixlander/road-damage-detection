@@ -9,6 +9,9 @@ from fastapi.responses import JSONResponse
 from PIL import Image
 import numpy as np
 from ultralytics import YOLO
+from fastapi.responses import Response
+import cv2
+
 
 APP = FastAPI(title="Road Damage Detection API", version="0.1.0")
 
@@ -81,3 +84,37 @@ async def predict_image(
         "iou": iou,
         "model_path": model_path,
     })
+    
+@APP.post("/predict_image_annotated")
+async def predict_image_annotated(
+    file: UploadFile = File(...),
+    model_path: str = Query(default="runs/detect/smoke_2ep/weights/best.pt"),
+    conf: float = Query(default=0.05, ge=0.0, le=1.0),
+    iou: float = Query(default=0.45, ge=0.0, le=1.0),
+) -> Response:
+    data = await file.read()
+    img = Image.open(io.BytesIO(data)).convert("RGB")
+    img_np = np.array(img)
+
+    model = get_model(model_path)
+    results = model.predict(source=img_np, conf=conf, iou=iou, verbose=False)
+    r = results[0]
+
+    annotated = img_np.copy()
+
+    if r.boxes is not None and len(r.boxes) > 0:
+        for b in r.boxes:
+            cls_id = int(b.cls.item())
+            score = float(b.conf.item())
+            x1, y1, x2, y2 = [int(v) for v in b.xyxy[0].tolist()]
+
+            cv2.rectangle(annotated, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            label = f"{CLASSES.get(cls_id, str(cls_id))} {score:.2f}"
+            cv2.putText(annotated, label, (x1, max(20, y1)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+
+    ok, buf = cv2.imencode(".png", cv2.cvtColor(annotated, cv2.COLOR_RGB2BGR))
+    if not ok:
+        return Response(content=b"", media_type="image/png")
+
+    return Response(content=buf.tobytes(), media_type="image/png")
