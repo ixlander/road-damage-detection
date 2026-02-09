@@ -4,3 +4,7 @@ numpy
 tqdm
 pyyaml
 scikit-learn
+fastapi
+uvicorn
+python-multipart
+pillow
