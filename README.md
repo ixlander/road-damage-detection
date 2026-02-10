@@ -79,7 +79,6 @@ python -m pip install --upgrade pip
 2) Install dependencies:
 ```
 pip install -r requirements.txt
-pip install fastapi uvicorn python-multipart pillow streamlit
 ```
 
 3) Install Kaggle CLI (needed only to download data):
