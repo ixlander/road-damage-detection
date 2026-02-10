@@ -63,6 +63,9 @@ road-damage-detection/
     infer_video.py
   data/                 (ignored)
   requirements.txt
+  Dockerfile
+  docker-compose.yml
+  .dockerignore
   README.md
   .gitignore
 ```
@@ -92,6 +95,72 @@ pip install kaggle
   - `C:\Users\<YOU>\.kaggle\kaggle.json`
 
 Do not commit `kaggle.json`.
+
+## Setup (Docker)
+
+### Prerequisites
+
+- Docker and Docker Compose installed
+- Trained model weights in `runs/detect/` directory (or train inside container)
+
+### Build and Run with Docker Compose
+
+1) Build the Docker images:
+```bash
+docker-compose build
+```
+
+2) Start services (API and Streamlit demo):
+```bash
+docker-compose up -d
+```
+
+This will start:
+- **FastAPI service** at `http://localhost:8000`
+- **Streamlit demo** at `http://localhost:8501`
+
+3) View logs:
+```bash
+docker-compose logs -f
+```
+
+4) Stop services:
+```bash
+docker-compose down
+```
+
+### Run Individual Services
+
+Run only the API:
+```bash
+docker-compose up api
+```
+
+Run only the Streamlit demo:
+```bash
+docker-compose up demo
+```
+
+### Run Custom Commands in Container
+
+Execute training inside the container:
+```bash
+docker-compose run --rm api yolo train model=yolov8n.pt data=configs/rdd2class.yaml epochs=2 imgsz=640 batch=8 name=smoke_2ep
+```
+
+Run video inference:
+```bash
+docker-compose run --rm api python src/infer_video.py --model runs/detect/smoke_2ep/weights/best.pt --source data/sample_video.mp4 --conf 0.25 --out_dir outputs
+```
+
+### Volume Mounts
+
+The Docker setup mounts these directories:
+- `./data` → `/app/data` (dataset and raw data)
+- `./outputs` → `/app/outputs` (inference outputs)
+- `./runs` → `/app/runs` (training artifacts and model weights)
+
+This allows you to access data and results from both host and container.
 
 ## Download RDD2022 (Kaggle)
 
