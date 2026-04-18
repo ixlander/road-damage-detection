@@ -6,6 +6,6 @@ pyyaml
 scikit-learn
 fastapi
 uvicorn
-python-multipart
-pillow
+python-multipart>=0.0.22
+pillow>=12.2.0
 streamlit
