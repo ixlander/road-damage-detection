@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   dependency-and-secrets:
     runs-on: ubuntu-latest

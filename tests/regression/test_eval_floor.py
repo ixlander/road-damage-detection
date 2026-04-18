@@ -4,9 +4,10 @@ from pathlib import Path
 from road_damage.modeling.evaluate import run_evaluate
 
 
-
 def test_tiny_eval_subset_metric_floors(tmp_path: Path) -> None:
-    baseline = json.loads(Path("tests/regression/fixtures/baseline_metrics.json").read_text(encoding="utf-8"))
+    baseline = json.loads(
+        Path("tests/regression/fixtures/baseline_metrics.json").read_text(encoding="utf-8")
+    )
 
     config = tmp_path / "eval.yaml"
     config.write_text(

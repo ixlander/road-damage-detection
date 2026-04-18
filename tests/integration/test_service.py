@@ -23,7 +23,6 @@ class _Model:
         return [_Result()]
 
 
-
 def test_inference_service_basic_flow(tmp_path: Path) -> None:
     model_file = tmp_path / "model.pt"
     model_file.write_text("x", encoding="utf-8")

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import io
-from pathlib import Path
 import sys
+from pathlib import Path
 
-import streamlit as st
 import numpy as np
+import streamlit as st
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[2]

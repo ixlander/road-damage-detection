@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import argparse
 import csv
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import cv2
 
@@ -13,7 +13,12 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from road_damage.common.config import get_model_registry
-from road_damage.common.constants import CLASS_ID_TO_NAME, DEFAULT_CONF, DEFAULT_IOU, DEFAULT_MODEL_ID
+from road_damage.common.constants import (
+    CLASS_ID_TO_NAME,
+    DEFAULT_CONF,
+    DEFAULT_IOU,
+    DEFAULT_MODEL_ID,
+)
 from road_damage.inference.service import InferenceService
 
 
@@ -48,11 +53,14 @@ def main() -> None:
     out_video = out_dir / f"{source.stem}_pred.mp4"
     out_csv = out_dir / f"{source.stem}_pred.csv"
 
-    writer = cv2.VideoWriter(str(out_video), cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height))
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore[attr-defined]
+    writer = cv2.VideoWriter(str(out_video), fourcc, fps, (width, height))
 
     with out_csv.open("w", newline="", encoding="utf-8") as fp:
         cw = csv.writer(fp)
-        cw.writerow(["frame_id", "timestamp_sec", "class_id", "class_name", "conf", "x1", "y1", "x2", "y2"])
+        cw.writerow(
+            ["frame_id", "timestamp_sec", "class_id", "class_name", "conf", "x1", "y1", "x2", "y2"]
+        )
 
         frame_id = -1
         while True:

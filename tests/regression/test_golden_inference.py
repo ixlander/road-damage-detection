@@ -11,8 +11,8 @@ class _Box:
 
 
 class _Result:
-    boxes = [_Box()]
-
+    def __init__(self) -> None:
+        self.boxes = [_Box()]
 
 
 def test_golden_json_output() -> None:

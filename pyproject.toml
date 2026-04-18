@@ -22,3 +22,12 @@ warn_unused_ignores = true
 warn_redundant_casts = true
 warn_unused_configs = true
 strict_optional = true
+disable_error_code = ["import-untyped"]
+exclude = "^datasets/(preview_classes|preview_crops|inspect_rdd2022)\\.py$"
+
+[tool.ruff.lint.per-file-ignores]
+"apps/api/main.py" = ["E402", "B008"]
+"apps/demo/app.py" = ["E402"]
+"apps/cli/infer_video.py" = ["E402"]
+"datasets/make_2class_dataset.py" = ["E402"]
+"datasets/inspect_yolo_labels.py" = ["E402"]

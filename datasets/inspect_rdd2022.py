@@ -1,5 +1,5 @@
-from pathlib import Path
 from collections import Counter
+from pathlib import Path
 
 root = Path("data/raw")
 exts = Counter(p.suffix.lower() for p in root.rglob("*") if p.is_file())

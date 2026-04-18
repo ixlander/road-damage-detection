@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import argparse
+import tempfile
 from pathlib import Path
 
 import numpy as np
 
-from road_damage.common.config import get_model_registry
+from road_damage.common.config import ModelRegistry
 from road_damage.inference.service import InferenceService
 
 
@@ -20,19 +21,25 @@ def run_smoke() -> int:
 
             class Box:
                 def __init__(self):
-                    import numpy as _np
+                    import numpy as np
 
-                    self.cls = _np.array([0.0])
-                    self.conf = _np.array([0.9])
-                    self.xyxy = _np.array([[5.0, 5.0, 25.0, 25.0]])
+                    self.cls = np.array([0.0])
+                    self.conf = np.array([0.9])
+                    self.xyxy = np.array([[5.0, 5.0, 25.0, 25.0]])
 
             class Result:
                 boxes = [Box()]
 
             return [Result()]
 
-    svc = InferenceService(model_registry=get_model_registry(), model_loader=lambda _: FakeModel())
-    dets, _annotated = svc.predict(image_rgb=image)
+    with tempfile.TemporaryDirectory() as td:
+        model_path = Path(td) / "dummy.pt"
+        model_path.write_text("stub", encoding="utf-8")
+        svc = InferenceService(
+            model_registry=ModelRegistry(models={"default": str(model_path)}),
+            model_loader=lambda _: FakeModel(),
+        )
+        dets, _annotated = svc.predict(image_rgb=image)
     print({"n_detections": len(dets), "detections": dets})
     return 0
 

@@ -15,7 +15,6 @@ class _Result:
         self.boxes = [_Box(0.0, 0.95, [10.0, 11.0, 20.0, 21.0])]
 
 
-
 def test_prediction_serialization_schema() -> None:
     out = serialize_yolo_result(_Result())
     assert out == [

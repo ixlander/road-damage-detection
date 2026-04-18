@@ -4,8 +4,8 @@ import numpy as np
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from apps.api.main import APP
 import apps.api.main as api_main
+from apps.api.main import APP
 
 
 class _FakeService:
@@ -24,12 +24,10 @@ class _FakeService:
         )
 
 
-
 def _png_bytes() -> bytes:
     buf = io.BytesIO()
     Image.new("RGB", (8, 8), color=(0, 0, 0)).save(buf, format="PNG")
     return buf.getvalue()
-
 
 
 def test_health_endpoint() -> None:
@@ -37,7 +35,6 @@ def test_health_endpoint() -> None:
     resp = client.get("/health")
     assert resp.status_code == 200
     assert resp.json() == {"status": "ok"}
-
 
 
 def test_predict_endpoint_schema(monkeypatch) -> None:

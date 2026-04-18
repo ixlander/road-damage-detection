@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict
-from pathlib import Path
 import csv
 import json
+from dataclasses import asdict, dataclass
+from pathlib import Path
 
 
 @dataclass
@@ -14,7 +14,6 @@ class EvalSummary:
     precision: float
     recall: float
     per_class_ap: dict[str, float]
-
 
 
 def write_eval_outputs(summary: EvalSummary, out_dir: Path) -> None:

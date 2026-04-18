@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import argparse
-from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
 import json
 import os
-from pathlib import Path
 import random
 import subprocess
+from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -28,16 +28,13 @@ class TrainMetadata:
     created_at_utc: str
 
 
-
 def _get_git_sha() -> str:
     try:
-        return (
-            subprocess.check_output(["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL)
-            .strip()
-        )
+        return subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL
+        ).strip()
     except Exception:
         return "unknown"
-
 
 
 def _set_seed(seed: int) -> None:
@@ -46,14 +43,15 @@ def _set_seed(seed: int) -> None:
     os.environ["PYTHONHASHSEED"] = str(seed)
 
 
-
 def run_train(config_path: Path, output_dir: Path) -> int:
     config = load_yaml(config_path)
     seed = int(config.get("seed", 42))
     _set_seed(seed)
 
     dataset_root = Path(config.get("dataset_root", "data/rdd2class_yolo"))
-    manifest = asdict(create_manifest(dataset_root=dataset_root, source="RDD2022", version="2class"))
+    manifest = asdict(
+        create_manifest(dataset_root=dataset_root, source="RDD2022", version="2class")
+    )
 
     metadata = TrainMetadata(
         commit_sha=_get_git_sha(),
@@ -65,7 +63,9 @@ def run_train(config_path: Path, output_dir: Path) -> int:
     )
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    (output_dir / "train_metadata.json").write_text(json.dumps(asdict(metadata), indent=2), encoding="utf-8")
+    (output_dir / "train_metadata.json").write_text(
+        json.dumps(asdict(metadata), indent=2), encoding="utf-8"
+    )
 
     # Optional train execution for local full runs.
     if config.get("run_ultralytics", False):
@@ -82,7 +82,6 @@ def run_train(config_path: Path, output_dir: Path) -> int:
             name=str(config.get("name", "baseline")),
         )
     return 0
-
 
 
 def main() -> int:
