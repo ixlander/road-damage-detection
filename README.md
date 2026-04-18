@@ -1,258 +1,107 @@
 # Road Damage Detection (Crack and Pothole)
 
-This repository contains an end-to-end computer vision project for road damage detection using YOLOv8.
-It includes:
-- Dataset preparation (class merging into 2 classes)
-- Training (smoke test and full training command)
-- Video inference script (annotated MP4 + CSV predictions)
-- FastAPI inference service (JSON + annotated image)
-- Streamlit demo (image and video inference UI)
+This repository provides a safer, modular PoC for road-damage detection with shared inference logic across API, demo, and CLI.
 
-## Classes
+## Class mapping invariant
 
-The project uses 2 classes:
-- 0: crack
-- 1: pothole
+- `0 -> crack`
+- `1 -> pothole`
 
-The original dataset distribution was merged into these two classes. In the provided Kaggle split, `class_id 4` corresponds to pothole; all other class IDs are merged into crack.
+## Quickstart
 
-## Dataset
-
-Source: RDD2022 from Kaggle (already in YOLO format with train/val/test splits).
-
-Expected raw layout after download:
-```
-data/raw/RDD_SPLIT/
-  train/
-    images/
-    labels/
-  val/
-    images/
-    labels/
-  test/
-    images/
-    labels/
-```
-
-The project creates a new 2-class dataset at:
-```
-data/rdd2class_yolo/
-  images/{train,val,test}
-  labels/{train,val,test}
-```
-
-Notes:
-- The `data/` directory is ignored by git. You must download/prepare data locally.
-- Labels are YOLO format: `class x_center y_center width height` (normalized to [0, 1]).
-
-## Repository structure
-
-```
-road-damage-detection/
-  api/
-    main.py
-  configs/
-    rdd2class.yaml
-  datasets/
-    inspect_yolo_labels.py
-    make_2class_dataset.py
-    preview_classes.py
-  demo/
-    app.py
-  src/
-    infer_video.py
-  data/                 (ignored)
-  requirements.txt
-  Dockerfile
-  docker-compose.yml
-  .dockerignore
-  README.md
-  .gitignore
-```
-
-## Setup (Windows)
-
-1) Create and activate a virtual environment:
-```
+```bash
 python -m venv .venv
-.\.venv\Scripts\activate
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 python -m pip install --upgrade pip
+pip install -r requirements-dev.txt -c constraints.txt
 ```
 
-2) Install dependencies:
+## Project layout
+
+```text
+apps/
+  api/main.py
+  demo/app.py
+  cli/infer_video.py
+src/road_damage/
+  common/
+  data/
+  inference/
+  modeling/
+configs/
+  data/
+  train/
+  eval/
+tests/
+  unit/
+  integration/
+  regression/
 ```
-pip install -r requirements.txt
-```
 
-3) Install Kaggle CLI (needed only to download data):
-```
-pip install kaggle
-```
+Legacy paths remain for compatibility:
+- `api/main.py`
+- `demo/app.py`
+- `src/infer_video.py`
 
-4) Configure Kaggle credentials:
-- Download `kaggle.json` from your Kaggle account settings.
-- Place it at:
-  - `C:\Users\<YOU>\.kaggle\kaggle.json`
+## Data prep
 
-Do not commit `kaggle.json`.
-
-## Setup (Docker)
-
-### Prerequisites
-
-- Docker and Docker Compose installed
-- Trained model weights in `runs/detect/` directory (or train inside container)
-
-### Build and Run with Docker Compose
-
-1) Build the Docker images:
 ```bash
-docker-compose build
+python datasets/make_2class_dataset.py
+python -m road_damage.data.validate --root data/rdd2class_yolo --report outputs/dataset_validation_report.json
 ```
 
-2) Start services (API and Streamlit demo):
+## Train / eval / infer
+
+Train wrapper (metadata + reproducibility lineage):
 ```bash
-docker-compose up -d
+PYTHONPATH=src python -m road_damage.modeling.train --config configs/train/baseline.yaml --out outputs/train
 ```
 
-This will start:
-- **FastAPI service** at `http://localhost:8000`
-- **Streamlit demo** at `http://localhost:8501`
-
-3) View logs:
+Evaluate wrapper:
 ```bash
-docker-compose logs -f
+PYTHONPATH=src python -m road_damage.modeling.evaluate --config configs/eval/default.yaml --out outputs/eval
 ```
 
-4) Stop services:
+Video inference CLI:
 ```bash
-docker-compose down
+python apps/cli/infer_video.py --source data/sample_video.mp4 --model_id default --out_dir outputs
 ```
 
-### Run Individual Services
-
-Run only the API:
+API:
 ```bash
-docker-compose up api
+uvicorn apps.api.main:APP --host 127.0.0.1 --port 8000
 ```
 
-Run only the Streamlit demo:
+Demo:
 ```bash
-docker-compose up demo
+streamlit run apps/demo/app.py
 ```
 
-### Run Custom Commands in Container
+## Reproducibility workflow
 
-Execute training inside the container:
-```bash
-docker-compose run --rm api yolo train model=yolov8n.pt data=configs/rdd2class.yaml epochs=2 imgsz=640 batch=8 name=smoke_2ep
-```
+- Use config files in `configs/train` and `configs/eval`.
+- Set explicit seed in train config.
+- Persist `train_metadata.json` (commit SHA, config snapshot, dataset manifest hash).
+- Keep dataset validation and manifest checks in CI for dataset-touching changes.
 
-Run video inference:
-```bash
-docker-compose run --rm api python src/infer_video.py --model runs/detect/smoke_2ep/weights/best.pt --source data/sample_video.mp4 --conf 0.25 --out_dir outputs
-```
+## Compatibility matrix
 
-### Volume Mounts
+- Python: 3.10–3.11
+- CUDA: optional, CPU supported by default configs
+- Ultralytics: pinned via `constraints.txt` (`8.3.120`)
 
-The Docker setup mounts these directories:
-- `./data` → `/app/data` (dataset and raw data)
-- `./outputs` → `/app/outputs` (inference outputs)
-- `./runs` → `/app/runs` (training artifacts and model weights)
+## Quality and security gates
 
-This allows you to access data and results from both host and container.
+- `ci.yml`: lint, type-check, tests, smoke inference/eval
+- `security.yml`: dependency vulnerability scan + secret scanning
 
-## Download RDD2022 (Kaggle)
+## Migration notes
 
-Run the download script (Windows PowerShell):
-```
-.\scripts\download_rdd2022.ps1
-```
+- New shared inference core lives under `src/road_damage/inference`.
+- Public API now prefers `model_id`; direct arbitrary local `model_path` is rejected unless mapped in whitelist (`ROAD_DAMAGE_MODELS`).
+- Existing `/predict_image` route is preserved as v1 compatibility alias.
 
-Expected output directory:
-```
-data/raw/RDD_SPLIT
-```
+## Rollback guidance
 
-## Build the 2-class dataset
-
-1) (Optional) Inspect label class IDs in the raw dataset:
-```
-python .\datasets\inspect_yolo_labels.py --root data\raw\RDD_SPLIT --allowed 0,1,2,3,4
-```
-
-2) Create the 2-class dataset:
-```
-python .\datasets\make_2class_dataset.py
-```
-
-3) Verify the new dataset contains only class IDs 0 and 1:
-```
-python .\datasets\inspect_yolo_labels.py --root data\rdd2class_yolo --allowed 0,1
-```
-
-## Train (YOLOv8)
-
-Smoke test (quick check that everything runs):
-```
-yolo train model=yolov8n.pt data=configs\rdd2class.yaml epochs=2 imgsz=640 batch=8 device=0 name=smoke_2ep
-```
-
-Full training (better results):
-```
-yolo train model=yolov8n.pt data=configs\rdd2class.yaml epochs=50 imgsz=640 batch=8 device=0 name=baseline_50ep
-```
-
-Training artifacts are saved under:
-```
-runs/detect/<run_name>/
-```
-
-## Video inference (MP4 + CSV)
-
-Run video inference using trained weights:
-```
-python .\src\infer_video.py --model runs\detect\smoke_2ep\weights\best.pt --source data\sample_video.mp4 --conf 0.25 --out_dir outputs
-```
-
-Outputs:
-- `outputs/<video_name>_pred.mp4`
-- `outputs/<video_name>_pred.csv`
-
-## FastAPI inference service
-
-Start the API:
-```
-uvicorn api.main:APP --host 127.0.0.1 --port 8000
-```
-
-Endpoints:
-- `GET /health`
-- `POST /predict_image` returns JSON detections
-- `POST /predict_image_annotated` returns an annotated PNG
-
-Test using Postman:
-- Method: POST
-- URL: `http://127.0.0.1:8000/predict_image`
-- Body: form-data
-  - key: `file` (type: File)
-  - value: select an image
-
-To get an annotated image:
-- URL: `http://127.0.0.1:8000/predict_image_annotated?conf=0.05`
-
-## Streamlit demo
-
-Run the demo:
-```
-streamlit run demo\app.py
-```
-
-The demo supports:
-- Image upload: shows annotated output and JSON detections
-- Video upload: produces annotated video and CSV and allows downloading them
-
-## Notes
-
-- If you see zero detections with a smoke model, reduce `conf` (e.g., 0.05 or 0.01).
-- The dataset is class-imbalanced (cracks are much more frequent than potholes). This is expected.
+- If deployment issues occur, revert to previous commit/tag and keep old runtime entrypoints (`api/main.py`, `demo/app.py`, `src/infer_video.py`) which are retained.
+- Disable new wrappers by running legacy commands against prior revision while investigating config or registry mismatches.

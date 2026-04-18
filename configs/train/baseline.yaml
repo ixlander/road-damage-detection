@@ -1,0 +1,10 @@
+seed: 42
+run_ultralytics: false
+model: yolov8n.pt
+data: configs/data/rdd2class.yaml
+dataset_root: data/rdd2class_yolo
+epochs: 50
+imgsz: 640
+batch: 8
+device: cpu
+name: baseline_50ep

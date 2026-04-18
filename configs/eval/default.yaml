@@ -1,0 +1,4 @@
+smoke_map50: 0.55
+baseline_floor_map50: 0.50
+baseline_floor_crack_ap: 0.45
+baseline_floor_pothole_ap: 0.40
