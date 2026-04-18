@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "."]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N", "C4", "SIM"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unused_configs = true
+strict_optional = true
+disable_error_code = ["import-untyped"]
+exclude = "^datasets/(preview_classes|preview_crops|inspect_rdd2022)\\.py$"
+
+[tool.ruff.lint.per-file-ignores]
+"apps/api/main.py" = ["E402", "B008"]
+"apps/demo/app.py" = ["E402"]
+"apps/cli/infer_video.py" = ["E402"]
+"datasets/make_2class_dataset.py" = ["E402"]
+"datasets/inspect_yolo_labels.py" = ["E402"]

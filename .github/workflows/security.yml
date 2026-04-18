@@ -1,0 +1,32 @@
+name: Security
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-and-secrets:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install security tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-audit -c constraints.txt
+      - name: Dependency vulnerability scan
+        run: pip-audit -r requirements.txt
+      - name: Secret scan
+        uses: trufflesecurity/trufflehog@v3.88.20
+        with:
+          path: ./
+          base: HEAD~1
+          head: HEAD
+          extra_args: --results=verified,unknown

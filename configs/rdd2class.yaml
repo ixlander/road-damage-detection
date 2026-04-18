@@ -1,3 +1,4 @@
+# Backward-compatible alias for legacy training command.
 path: data/rdd2class_yolo
 train: images/train
 val: images/val
